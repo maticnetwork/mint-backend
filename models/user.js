@@ -55,6 +55,9 @@ var UserSchema = new Schema({
     },
     refreshToken: {
         type: String
+    },
+    gasFeeUtilized: {
+        type: String
     }
 },{
     timestamps: true

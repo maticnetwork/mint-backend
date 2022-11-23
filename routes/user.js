@@ -20,6 +20,8 @@ const uuid = require('uuid');
 
 const AuthCheck = require('../middleware/API');
 const { SignatureCheck } = require("../middleware/Signature");
+const { type } = require("os");
+const { getGasTankBalance }= require('./utilities/gasTank');
 
 const DiscordStrategy = require('passport-discord').Strategy;
 passportUser.serializeUser((profile, done) => {
@@ -167,9 +169,8 @@ const user = (redisClient) => {
 			const { accessToken, accessSecret, screenName, userId } = await tempClient.login(verifier);
 
 			console.log('Twitter UserName - ', screenName);
-			
 
-			const userTwitter = await User.findOne({ 'twitter.name': `@${screenName}`});
+			const userTwitter = await User.findOne({ 'twitter.id': userId});
 
 			if(userTwitter) {
 				if(userTwitter.wallet !== wallet) {
@@ -385,6 +386,7 @@ const user = (redisClient) => {
 			}
 
 			const apis = await FetchSocialUserApi(wallet);
+			console.log(apis);
 
 			const activeApis = await apis.filter((item) => item.status === 'ACTIVE');
 
@@ -533,6 +535,22 @@ const user = (redisClient) => {
 			}
 		} catch(e) {
 			return res.status(500).json({status: false, message: e})
+		}
+	});
+
+	router.get('/gasTankBalance/:wallet', AuthCheck, async(req, res) => {
+		try {
+			const { wallet } = req.params;
+			if(!wallet) return res.status(400).json({status: false, message: "Wallet address not provided!"});
+
+			const user = await User.findOne({wallet});
+			if(!user) return res.status(400).json({status: false, message: "Wallet account not found!"});
+
+			const balance = await getGasTankBalance(wallet);
+
+			return res.status(200).json({status: true, balance });
+		} catch(e) {
+			return res.status(500).json({status: false, message: e});
 		}
 	});
 

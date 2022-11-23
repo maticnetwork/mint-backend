@@ -5,6 +5,7 @@ const RateLimit = require("../middleware/RateLimiter");
 const JWT = require('jsonwebtoken');
 
 const { web3, nftFactory } = require("./../config/Biconomy");
+const { calculateGasPrice, getGasTankBalance } = require('./utilities/gasTank');
 
 
 const { ERC1155Factory, ERC721Factory } = nftFactory;
@@ -149,6 +150,11 @@ const collectionCreation = (redisClient) => {
 
             if(!user) {
                 return res.json({status: 400, message: "Details not found!"});
+            }
+
+            const gasTankBalance = await getGasTankBalance(wallet);
+            if(web3.utils.toBN(gasTankBalance).lte(web3.utils.toBN('0'))) {
+                return res.status(400).json({message: "Insufficient gas tank balance to send transaction, please fill the gas tank!"});
             }
 
             const collection = user.customContracts.filter((item) => item.collectionAddress === contractAddress)[0];
@@ -322,6 +328,7 @@ async function handleTxHash(txId, hash) {
 async function handleSuccess(txId, receipt, type) {
     try {
         console.log('Tx success...', receipt.transactionHash);
+        console.log(receipt);
         const returnValues = await decodeEventLog(receipt.events['0'].raw, type);
         let id;
         if(type === 'ERC721') {
@@ -329,10 +336,25 @@ async function handleSuccess(txId, receipt, type) {
         } else {
             id = returnValues.id;
         }
-        await Collection.findOneAndUpdate({_id: txId}, {
+
+        const feeBurnt = await calculateGasPrice(receipt);
+        
+
+        const data = await Collection.findOneAndUpdate({_id: txId}, {
             status: "CONFIRMED",
             tokenId: id
         });
+
+        const userData = await User.findOne({wallet: data.wallet});
+        let gasFeeUtilized;
+        if(userData.gasFeeUtilized) {
+            gasFeeUtilized = web3.utils.toBN(userData.gasFeeUtilized).add(web3.utils.toBN(feeBurnt));
+        } else {
+            gasFeeUtilized = web3.utils.toBN(feeBurnt)
+        }
+
+        await User.findOneAndUpdate({wallet: data.wallet}, {gasFeeUtilized});
+        
     } catch(e) {
         console.log(e);
     }
