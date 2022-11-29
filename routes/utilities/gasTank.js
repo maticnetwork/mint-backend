@@ -7,12 +7,10 @@ const gasTankContract = new web3.eth.Contract(gasTankABI.abi, gasTankABI.address
 
 const getGasTankBalance = async(wallet) => {
     try {
-        console.log(DEFAULT_BALANCE);
         const userData = await User.findOne({wallet});
 
         let feeBurnt = userData.gasFeeUtilized;
         const totalFeeDeposited = await gasTankContract.methods.balanceOf(wallet).call();
-        console.log(totalFeeDeposited);
         if(feeBurnt) {
             return web3.utils.toBN(web3.utils.toBN(DEFAULT_BALANCE).add(web3.utils.toBN(totalFeeDeposited)).sub(web3.utils.toBN(feeBurnt))).toString();
         }

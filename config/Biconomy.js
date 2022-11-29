@@ -36,6 +36,7 @@ if(process.env.TESTNET === 'true') {
     globalNFT = require('../nftGlobalMainnet.json');
     globalClaim = require('../claimGlobalMainnet.json');
     nftFactory = require('../nftFactoryMainnet.json');
+    gasTank = require('../abis/GasTankABITestnet.json');
     networkId = '137';
     ALCHEMY_URL = process.env.PROVIDER_URL_MAINNET;
 }

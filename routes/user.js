@@ -271,9 +271,32 @@ const user = (redisClient) => {
 		}
 	});
 
-	router.get('/social/:wallet', [
+	router.get('/isCreatedKeys/:wallet',
+	[
 		check('wallet').notEmpty().withMessage('Wallet is required'),
-	], AuthCheck, async (req, res)=> {
+	], AuthCheck, async(req, res) => {
+		try {
+			const { wallet } = req.params;
+			const user = await User.findOne({wallet});
+
+			if(!user.twitter && !user.discord) 
+				return res.status(400).send("Bad Request")
+
+			const apis = await FetchSocialUserApi(wallet);
+
+			let activeApis = apis.filter((item) => item.status === 'ACTIVE');
+
+			const isCreated = activeApis.length > 0;
+
+			return res.status(200).json({isCreated});
+			
+		} catch(e) {
+			console.log(e);
+			return res.status(500).json({error: e});
+		}
+	});
+
+	router.post('/social/apikeys', AuthCheck, SignatureCheck, async (req, res)=> {
 		try {
 			const { wallet } = req.params;
 			const WINDOW = 24 * 60 * 60 * 1000; // 1 day in ms

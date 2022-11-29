@@ -6,6 +6,7 @@ const JWT = require('jsonwebtoken');
 
 const { web3, nftFactory } = require("./../config/Biconomy");
 const { calculateGasPrice, getGasTankBalance } = require('./utilities/gasTank');
+const { checkGasBalance } = require('../middleware/GasBalance');
 
 
 const { ERC1155Factory, ERC721Factory } = nftFactory;
@@ -91,12 +92,20 @@ const collectionCreation = (redisClient) => {
                 return res.json({status: 400, message: "Details not found!"});
             }
 
-            const collection = user.customContracts.filter((item) => item.collectionAddress === contractAddress)[0];
+            const collection = user.customContracts.filter((item) => item.collectionAddress === contractAddress)[0];            
 
             let defaultSupply = 1;
             if(supply !== undefined) {
                 defaultSupply = supply;
-            }  
+            }
+
+            const isAvailable = await checkGasBalance(req);
+            if(!isAvailable) {
+                return res.status(400).json({message: "Insufficient gas tank balance to send transaction, please fill the gas tank!"});
+            }
+
+            console.log('mint in progres....');
+            return res.status(200).send("done");
 
             const data = {
                 wallet: wallet,
@@ -136,7 +145,7 @@ const collectionCreation = (redisClient) => {
         }
     });
 
-    router.post('/collection/mint', AuthCheck, JWTAuth,
+    router.post('/collection/mint', AuthCheck, JWTAuth, 
         (req, res, next) => RateLimit(redisClient, req, res, next),
         async(req, res) => {
         try {
@@ -316,6 +325,7 @@ const collectionCreation = (redisClient) => {
     return router;
 }
 
+
 async function handleTxHash(txId, hash) {
     try {
         console.log('Tx hash...', hash)
@@ -328,7 +338,6 @@ async function handleTxHash(txId, hash) {
 async function handleSuccess(txId, receipt, type) {
     try {
         console.log('Tx success...', receipt.transactionHash);
-        console.log(receipt);
         const returnValues = await decodeEventLog(receipt.events['0'].raw, type);
         let id;
         if(type === 'ERC721') {

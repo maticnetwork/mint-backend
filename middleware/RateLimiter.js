@@ -7,7 +7,6 @@ const RateLimit = async(redisClientPromise, req, res, next) => {
     const token = await req.headers['x-api-key'];
     const session = await req.body.sessionID !== undefined ? req.body.sessionID : false;
     const newSession = await req.sessionID !== undefined ? req.sessionID : false;
-    console.log(token, session, newSession);
     if (!token) {
         return res.status(401).json({
             status: 'error',
@@ -53,8 +52,6 @@ const RateLimit = async(redisClientPromise, req, res, next) => {
             }
         }  
       
-
-        console.log(reqDetails);
 
         if(!reqDetails) {
             await redisClient.set(token, JSON.stringify({
