@@ -17,6 +17,8 @@ let biconomyApi;
 let globalNFT;
 let globalClaim;
 let networkId;
+let gasTank;
+let nftFactory;
 if(process.env.TEST === 'true') {
     console.log('in testnet');
     providerUrl = PROVIDER_URL;
@@ -24,6 +26,7 @@ if(process.env.TEST === 'true') {
     globalNFT = require('../nftGlobalTestnet.json');
     globalClaim = require('../claimGlobalTestnet.json');
     nftFactory = require('../nftFactoryTestnet.json');
+    gasTank = require('../abis/GasTankABITestnet.json');
 
     networkId = '80001';
     ALCHEMY_URL = "https" + process.env.PROVIDER_URL.substring(3, process.env.PROVIDER_URL.length);
@@ -34,6 +37,8 @@ if(process.env.TEST === 'true') {
     globalNFT = require('../nftGlobalMainnet.json');
     globalClaim = require('../claimGlobalMainnet.json');
     nftFactory = require('../nftFactoryMainnet.json');
+    gasTank = require('../abis/GasTankABIMainnet.json');
+
     networkId = '137';
     ALCHEMY_URL = process.env.PROVIDER_URL_MAINNET;
 }
@@ -75,6 +80,7 @@ module.exports = {
     globalNFT,
     globalClaim,
     networkId,
+    gasTank,
     nftFactory,
     web3N,
     ALCHEMY_URL

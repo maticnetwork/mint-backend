@@ -1,6 +1,5 @@
 const BatchMintUpload = require("../../models/batchMint");
 const Claim = require("../../models/claim");
-// const claimGlobal = require('../../claimGlobal.json');
 let { web3, batchId, web3N, globalClaim } = require('../../config/Biconomy');
 const MinterWalletAbi = require('../../abis/MinterWallet.json');
 const ERC721BatchMintAbi = require('../../abis/ERC721BatchMint.json');
@@ -206,10 +205,9 @@ async function refundGas(wallet, refundAmount, totalGasUsed, estimatedGas, sessi
  * @returns {Promise<string>=} estimated gas
  */
 async function estimateGas(wallet, hash) {
-    const value = await collectionContract.methods.mintUnderCollection(BatchMintERC721ContractAddress, "Session_id", wallet, 1, 100, `${hash}/metadata`).estimateGas({
+    return await collectionContract.methods.mintUnderCollection(BatchMintERC721ContractAddress, "Session_id", wallet, 1, 100, `${hash}/metadata`).estimateGas({
         from: process.env.MINTER,
     });
-    return value;
 }
 
 async function handleWhitelistTxhash(data) {

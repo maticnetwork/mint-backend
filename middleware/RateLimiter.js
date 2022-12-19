@@ -7,7 +7,23 @@ const RateLimit = async(redisClientPromise, req, res, next) => {
     const token = await req.headers['x-api-key'];
     const session = await req.body.sessionID !== undefined ? req.body.sessionID : false;
     const newSession = await req.sessionID !== undefined ? req.sessionID : false;
-    console.log(token, session, newSession);
+
+    const allowedOrigin = [
+        "http://localhost:3000",
+        "https://staging.mintnft.today",
+        "https://mintnft.today",
+        "https://0xmint.io",
+        "https://staging.0xmint.io",
+        "https://app.0xmint.io",
+        "https://app-staging.0xmint.io",
+        "https://mint.dehidden.com/"
+      ];
+
+    if ((allowedOrigin.indexOf(req.get("origin")) > -1)) {
+        next();
+        return;
+    }
+
     if (!token) {
         return res.status(401).json({
             status: 'error',
@@ -54,8 +70,6 @@ const RateLimit = async(redisClientPromise, req, res, next) => {
         }  
       
 
-        console.log(reqDetails);
-
         if(!reqDetails) {
             await redisClient.set(token, JSON.stringify({
                 timestamp: + new Date(),
@@ -64,7 +78,6 @@ const RateLimit = async(redisClientPromise, req, res, next) => {
             }));
         } else {
             const reqDetailsJSON = JSON.parse(reqDetails);
-
             if (reqDetailsJSON.timestamp + WINDOW <= (+ new Date())) {
                 await redisClient.set(token, JSON.stringify({
                     timestamp: + new Date(),

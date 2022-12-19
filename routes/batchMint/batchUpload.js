@@ -234,9 +234,7 @@ upload.any(),
                 metadataExtension = rawdata[index].split('.').pop();
             }
             console.log(metadataExtension);
-            // const metadataExtension =  'csv' //req.files?.csv[0]?.filename.split('.').pop();
             if (metadataExtension === 'csv') {
-                //fs.renameSync(req.files.csv[0].path, dirPath + "/" + "metadata.csv");
                 const metadataCSV = fs.readFileSync(dirPath + "/rawdata/" + "metadata.csv", { encoding: 'utf-8' });
                 metadata = parse(metadataCSV, { columns: true });
                 
@@ -269,11 +267,10 @@ upload.any(),
                 );
             } else if (metadataExtension === 'json') {
                 console.log('It is json');
-                //fs.renameSync(req.files.csv[0].path, dirPath + "/" + "metadata.json");
                 metadata = JSON.parse(fs.readFileSync(dirPath + "/rawdata/" + "metadata.json", { encoding: 'utf-8' }));
 
                 for(let _ of metadata) {
-                    let { index, name, description, ...attributesObj} = _;
+                    let { index, name, description} = _;
                     if(!((index+'') && name && description))
                         throw new ApiError(400, 'Metadata is not in proper format')
                 }
@@ -310,7 +307,6 @@ upload.any(),
             let gasPrice = new BN(await web3.eth.getGasPrice());
             const assetLength = assetFiles.length > BatchSize ? assetFiles.length : BatchSize;
             const batches = new BN(parseInt(assetLength / BatchSize));
-            // estimatedGas = 2 * (estimatedGas) * gasPrice * batches ;
             estimatedGas = estimatedGas.mul(gasPrice).mul(batches).mul(new BN(2));
 
 
