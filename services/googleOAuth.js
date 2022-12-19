@@ -21,8 +21,9 @@ const getProfileInfo = async (code) => {
       audience: process.env.GOOGLE_CLIENT,
     });
   
-    return ticket.getPayload();
+    const payload = ticket.getPayload();
   
+    return payload;
   };
 
   module.exports = getProfileInfo;

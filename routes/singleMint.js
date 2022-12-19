@@ -10,7 +10,6 @@ const formidable = require("formidable");
 const axios = require("axios");
 
 const fs = require("fs");
-const path = require('path');
 const Mint = require("./../models/mint");
 const Image = require("./../models/image");
 const { NFTStorage, File } = require("nft.storage");
@@ -33,7 +32,6 @@ const PROVIDER_TESTNET = "https" + process.env.PROVIDER_URL.substring(3, process
 let { batchId } = require("./../config/Biconomy");
 const Autograph = require("../models/utilities/autograph");
 const Collection = require("../models/collection");
-const ApiError = require("../utils/ApiError");
 
 const SingleMint = (redisClient) => {
   //Upload the file to IPFS
@@ -43,21 +41,14 @@ const SingleMint = (redisClient) => {
     (req, res, next) => RateLimit(redisClient, req, res, next),
     async (req, res) => {
       try {
-       
-        const dir = `${path.join(__dirname, "../uploads/singlemint/")}`;
-        if(!fs.existsSync(dir)) {
-          fs.mkdirSync(dir);
-        }
-        const form = formidable({ multiples: true, uploadDir: dir, keepExtensions: false, maxFileSize: 100 * 1024 * 1024 });
-
+        const form = formidable({ multiples: true });
+        form.maxFileSize = 1 * 1024 * 1024;
         req.setTimeout(0);
-        const filePromise = await new Promise((resolve, rej) => {
         // Gets the stream coming from frontend as fields and files
         form.parse(req, async (err, fields, files) => {
           try {
             if (err) {
-              console.log(err);
-              throw new ApiError(500, err.message);
+              return res.send(500).json({ err });
             }
 
             if (
@@ -65,14 +56,20 @@ const SingleMint = (redisClient) => {
               fields.metadata === null ||
               !fields.metadata
             ) {
-              throw new ApiError(400, "Please send a valid wallet metadata")
+              return res.json({
+                success: false,
+                msg: "Please send a valid wallet metadata",
+              });
             }
             if (
               files?.image?.filepath === "" ||
               files?.image?.filepath === null ||
               !files?.image?.filepath
             ) {
-              throw new ApiError(400, "Please send a valid image");
+              return res.json({
+                success: false,
+                msg: "Please send a valid image",
+              });
             }
 
             var tempfile = files.image;
@@ -110,7 +107,9 @@ const SingleMint = (redisClient) => {
 
             if (!supportedFileTypes.includes(fileType)) {
               console.log("File type not supported - ", fileType);
-              throw new ApiError(400,  "Image: Invalid file type");
+              return res.status(400).json({
+                message: "Image: Invalid file type",
+              });
             }
 
             let tempfile1;
@@ -122,7 +121,10 @@ const SingleMint = (redisClient) => {
                 files?.asset?.filepath === null ||
                 !files?.asset?.filepath
               ) {
-                throw new ApiError(400, "Please send a valid file")
+                return res.json({
+                  success: false,
+                  msg: "Please send a valid file",
+                });
               }
               tempfile1 = files.asset;
               var fileType1 = tempfile1.originalFilename
@@ -134,7 +136,9 @@ const SingleMint = (redisClient) => {
                 type: tempfile1.mimetype,
               });
               if (!supportedFileTypes.includes(fileType1)) {
-                throw new ApiError(400, "Asset: Invalid file type");
+                return res.status(400).json({
+                  message: "Asset: Invalid file type",
+                });
               }
 
               try {
@@ -145,7 +149,9 @@ const SingleMint = (redisClient) => {
                 cid = await storage.put([file1]);
               } catch (error) {
                 console.log(error);
-                throw new ApiError(400, error.message);
+                return res.status(400).json({
+                  error: error,
+                });
               }
 
               let animatedURL =
@@ -155,19 +161,19 @@ const SingleMint = (redisClient) => {
               metadata.animation_url = animatedURL;
             }
 
-            let data;
-                  try {
-              console.log("Uploading metadata to IPFS...");
-              const nftstorage = new NFTStorage({ token: NFT_STORAGE_KEY });
-              data = await nftstorage.store({
-              image: file,
-              ...metadata,
-              });
-            }
-            catch (error) {
-              console.log(error);
-              throw new ApiError(500, error.message);
-            }
+			let data;
+            try {
+				console.log("Uploading metadata to IPFS...");
+				const nftstorage = new NFTStorage({ token: NFT_STORAGE_KEY });
+				data = await nftstorage.store({
+				image: file,
+				...metadata,
+				});
+			}
+			catch (error) {
+				console.log(error);
+				return res.status(500).json(error.message);
+			}
 
             delete metadata.image;
             console.log("Uploaded data...");
@@ -183,21 +189,17 @@ const SingleMint = (redisClient) => {
             newImage.save();
 
             if(data) {
-              return res.status(200).json({
-                data: data,
-              });
-			      }
-        } catch (e) {
-          console.log(e);
-          rej(e);
-        }
-        })         
-      });
-
-        
+				return res.status(200).json({
+					data: data,
+				});
+			}
+          } catch (e) {
+            console.log(e);
+            return res.status(500).json(e);
+          }
+        });
       } catch (e) {
-        console.log(e);
-        return res.status(500).json({error: e.message});
+        return res.status(500).json(e);
       }
     }
   );
@@ -458,7 +460,7 @@ const SingleMint = (redisClient) => {
         let actualNFTs = [];
 
         //Filter NFTs owned by the address with alchemy data under mints collection
-        for (let i = 0; i < totalNFTs; i++) {
+        for (i = 0; i < totalNFTs; i++) {
           let res = nfts.filter((item) => {
             return item.tokenURI === alchmeyNfts.ownedNfts[i].tokenUri.raw;
           });
@@ -477,7 +479,7 @@ const SingleMint = (redisClient) => {
         }
 
         //Filter NFTs owned by the address with alchemy data under autograph collection
-        for (let i = 0; i < totalNFTs; i++) {
+        for (i = 0; i < totalNFTs; i++) {
           let res = autographs.filter((item) => {
             return item.tokenURI === alchmeyNfts.ownedNfts[i].tokenUri.raw;
           });
@@ -495,7 +497,7 @@ const SingleMint = (redisClient) => {
           }
         }
 
-        for(let i = 0; i < totalNFTs; i++) {
+        for( i = 0; i < totalNFTs; i++) {
           let res = soccerCollection.filter((item) => {
             return item.tokenURI === alchmeyNfts.ownedNfts[i].tokenUri.raw;
           });

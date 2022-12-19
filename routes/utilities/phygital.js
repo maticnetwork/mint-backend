@@ -8,6 +8,9 @@ const Autograph = require('../../models/utilities/autograph')
 const { check, validationResult } = require('express-validator');
 const { default: axios } = require('axios');
 
+// const AuthCheck = require('../../middleware/API');
+// const axios = require('axios');
+
 router.post("/order",
     [
         check('wallet', 'Wallet is required').notEmpty(),

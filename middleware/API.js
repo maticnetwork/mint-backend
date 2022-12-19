@@ -12,17 +12,11 @@ const AuthCheck = async (req, res, next) => {
     "http://localhost:3000",
     "https://staging.mintnft.today",
     "https://mintnft.today",
-    "https://0xmint.io",
-    "https://staging.0xmint.io",
-    "https://app.0xmint.io",
-    "https://app-staging.0xmint.io",
-    "https://mint.dehidden.com"
   ];
 
   try {
     if (token === process.env.FRONTEND_API) {
       if (!(allowedOrigin.indexOf(req.get("origin")) > -1)) {
-        console.log(req.get("origin") + "Request Origin");
         return res.status(400).json({
           status: "error",
           message: "Access denied! Reqest form non origin url",
@@ -32,10 +26,7 @@ const AuthCheck = async (req, res, next) => {
       }
     } else {
       const check = await User.findOne({
-        $or: [
-          { api: token },
-          { socialApi: { $elemMatch: { api: token, status: "ACTIVE" } } },
-        ],
+        $or: [{ api: token }, { socialApi: { $elemMatch: { api: token, status: "ACTIVE" } } }],
       });
 
       if (!check) {
@@ -54,5 +45,6 @@ const AuthCheck = async (req, res, next) => {
     });
   }
 };
+
 
 module.exports = AuthCheck;

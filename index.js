@@ -63,8 +63,8 @@ app.use("/v1", BatchMint);
 app.use("/v1", Claim);
 app.use("/v1", Analytics(redisClient));
 app.use("/api", User(redisClient));
-app.use("/v2", uploadBatchAPI(redisClient));
-app.use("/v2", BatchAPI(redisClient));
+app.use("/api", uploadBatchAPI(redisClient));
+app.use("/api", BatchAPI(redisClient));
 app.use("/v2", collectionCreation(redisClient));
 app.use("/dehidden/autograph", Autograph);
 app.use("/dehidden/phygital", Phygital);
@@ -93,6 +93,7 @@ const server = app.listen(port, () =>
   console.log(`Server started on port ${port}`)
 );
 
+// server.timeout = 5000000;
 
 server.setTimeout(600 * 60 * 1000);
 

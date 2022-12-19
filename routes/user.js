@@ -20,8 +20,6 @@ const uuid = require('uuid');
 
 const AuthCheck = require('../middleware/API');
 const { SignatureCheck } = require("../middleware/Signature");
-const { type } = require("os");
-const { getGasTankBalance }= require('./utilities/GasTank');
 
 const DiscordStrategy = require('passport-discord').Strategy;
 passportUser.serializeUser((profile, done) => {
@@ -38,6 +36,7 @@ passportUser.use(new DiscordStrategy({
     callbackURL: process.env.DISCORD_COPE_CALLBACK,
     scope: ['identify', 'email']
 }, async (accessToken, refreshToken, profile, done) => {
+    const { id, username, discriminator, avatar, email } = profile;
     const data = {
         profile,
         accessToken,
@@ -116,9 +115,7 @@ const user = (redisClient) => {
 					//await newUser.save();
 				}
 
-				
 				const { url, oauth_token, oauth_token_secret } = await requestCopeClient.generateAuthLink(process.env.TWITTER_COPE_CALLBACK);
-				
 
 				req.session.oauthToken = oauth_token;
 				req.session.oauthSecret = oauth_token_secret;
@@ -138,6 +135,7 @@ const user = (redisClient) => {
 			res.status(400).send('Bad request, or you denied application access. Please renew your request.' );
 			return;
 		}
+		const { oauth_token, oauth_verifier } = req.query;
 		const wallet = req.session.wallet;
 
 		try {
@@ -166,12 +164,12 @@ const user = (redisClient) => {
 
 			const tempClient = new TwitterApi({ ...TOKENS_COPE, accessToken: token, accessSecret: savedSecret });
 
-			const { screenName, userId } = await tempClient.login(verifier);
+			const { accessToken, accessSecret, screenName, userId } = await tempClient.login(verifier);
 
 			console.log('Twitter UserName - ', screenName);
 			
 
-			const userTwitter = await User.findOne({ 'twitter.id': userId});
+			const userTwitter = await User.findOne({ 'twitter.name': `@${screenName}`});
 
 			if(userTwitter) {
 				if(userTwitter.wallet !== wallet) {
@@ -212,7 +210,7 @@ const user = (redisClient) => {
 			const user = await User.findOne({ wallet: wallet });
 			
 			if(user){
-				await User.findOneAndUpdate({
+				const newUser = await User.findOneAndUpdate({
 					wallet: wallet,
 				}, {redirect: redirect_uri});
 				//await newUser.save();
@@ -272,35 +270,11 @@ const user = (redisClient) => {
 		}
 	});
 
-	router.get('/isCreatedKeys/:wallet',
-	[
+	router.get('/social/:wallet', [
 		check('wallet').notEmpty().withMessage('Wallet is required'),
-	], AuthCheck, async(req, res) => {
+	], AuthCheck, async (req, res)=> {
 		try {
 			const { wallet } = req.params;
-			const user = await User.findOne({wallet});
-
-			if(!user.twitter && !user.discord) 
-				return res.status(400).send("Bad Request")
-
-			const apis = await FetchSocialUserApi(wallet);
-
-			let activeApis = apis.filter((item) => item.status === 'ACTIVE');
-
-			const isCreated = activeApis.length > 0;
-
-			return res.status(200).json({isCreated});
-			
-		} catch(e) {
-			console.log(e);
-			return res.status(500).json({error: e});
-		}
-	});
-
-	router.post('/social/apikeys', AuthCheck, SignatureCheck, async (req, res)=> {
-		try {
-			const { wallet } = req.body;
-			if(!wallet) return res.status(400).json({status: false, message: "Wallet address not provided!"});
 			const WINDOW = 24 * 60 * 60 * 1000; // 1 day in ms
 			const ALLOWED_REQUESTS = 10000; // 10,000 requests per API token
 			const user = await User.findOne({ wallet: wallet});
@@ -549,19 +523,16 @@ const user = (redisClient) => {
 		}
 	});
 
-	router.get('/gasTankBalance/:wallet', AuthCheck, async(req, res) => {
+
+	router.get('/none/now/no/getUserDetails', AuthCheck, async(req, res) => {
 		try {
-			const { wallet } = req.params;
-			if(!wallet) return res.status(400).json({status: false, message: "Wallet address not provided!"});
+			const userData = await User.find({'socialApi.0': {$exists: true}});
 
-			const user = await User.findOne({wallet});
-			if(!user) return res.status(400).json({status: false, message: "Wallet account not found!"});
-
-			const balance = await getGasTankBalance(wallet);
-
-			return res.status(200).json({status: true, balance: balance });
+			if(userData) {
+				return res.status(200).json({userData});
+			}
 		} catch(e) {
-			return res.status(500).json({status: false, message: e});
+			return res.status(500).json({status: false, message: e})
 		}
 	});
 

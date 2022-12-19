@@ -19,6 +19,7 @@ const Mint = require('../models/mint');
 
 const claimContract =  new web3.eth.Contract(globalClaim.ClaimNFT.abi, globalClaim.ClaimNFT.address);
 
+// const upload = multer({ dest: 'uploads/claim' })
 const storage = multer.memoryStorage();
 const upload = multer({ storage: storage });
 
@@ -240,6 +241,7 @@ router.post("/claim", async (req, res) => {
     try {
         const {
             sessionID,
+            wallet,
         } = req.body;
 
         console.log(req.body);
@@ -252,6 +254,9 @@ router.post("/claim", async (req, res) => {
         if(!claimPage)
             throw new ApiError(400, "Details not found!");
     
+        // if(claimPage.status !== 'ACTIVE' || claimPage.status !== 'COMPLETED')
+        //     throw new ApiError(400, "Claim Page not ACTIVE!");
+
         if(claimPage.contractStandard === 'ERC721') {
             await Claim.findOneAndUpdate({ sessionID: sessionID }, { totalClaimed: claimPage.totalClaimed+1, status: "COMPLETED"});
         } else {
@@ -277,7 +282,7 @@ router.get('/claim/all/:wallet', async (req, res) => {
         const errors = validationResult(req);
         if (!errors.isEmpty()) {
             return res.status(422).json({ errors: errors.array() });
-        }
+        };
     
         const { wallet } = req.params;
     
@@ -305,7 +310,7 @@ router.get('/claim/:sessionID', async (req, res) => {
         const errors = validationResult(req);
         if (!errors.isEmpty()) {
             return res.status(422).json({ errors: errors.array() });
-        }
+        };
     
         const { sessionID } = req.params;
     
@@ -385,7 +390,7 @@ router.post('/claim/edit', async() => {
             customName,
         } = req.body;
         
-        for(let props in req.body) {
+        for(props in req.body) {
             if(!props) {
                 throw new ApiError(400, "Bad request data!");
             }

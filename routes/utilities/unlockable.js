@@ -18,7 +18,7 @@ router.post("/token",
     if (!errors.isEmpty()) {
         return res.status(400).json({ errors: errors.array() });
     }
-    const { txhash, content } = req.body;
+    const { wallet, txhash, content } = req.body;
     try {
         const asset = await Asset.findOne({ transactionHash: txhash })
         const autographed = await Autograph.findOne({ transactionHash: txhash })
