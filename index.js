@@ -93,7 +93,6 @@ const server = app.listen(port, () =>
   console.log(`Server started on port ${port}`)
 );
 
-// server.timeout = 5000000;
 
 server.setTimeout(600 * 60 * 1000);
 

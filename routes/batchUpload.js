@@ -186,13 +186,6 @@ const uploadFlow = async (dirPath, sessionID) => {
     });
 }
 
-// const setSessionId = (req, res, next) => {
-//     console.log('in session id')
-//     req.body['sessionID'] = uuid();
-//     console.log(req.body);
-//     next();
-// }
-
 router.post("/batch/upload",
     upload.any(),
     async (req, res) => {
@@ -255,11 +248,10 @@ router.post("/batch/upload",
                 );
             } else if (metadataExtension === 'json') {
                 console.log('It is json');
-                //fs.renameSync(req.files.csv[0].path, dirPath + "/" + "metadata.json");
                 metadata = JSON.parse(fs.readFileSync(dirPath + "/rawdata/" + "metadata.json", { encoding: 'utf-8' }));
 
                 for(let _ of metadata) {
-                    let { index, name, description, ...attributesObj} = _;
+                    let { index, name, description} = _;
                     if(!((index+'') && name && description))
                         throw new ApiError(400, 'Metadata is not in proper format')
                 }
@@ -267,7 +259,6 @@ router.post("/batch/upload",
                 throw new ApiError(400, 'Unknown metadata extension');
             }
 
-            //await extractZip(dirPath + "/assets.zip", dirPath + "/assets");
             const assetsFormat = await getFileFormat(dirPath + "/assets");
             const assetFiles = await getFilesFromPathInOrder(dirPath + "/assets");
 
@@ -296,7 +287,6 @@ router.post("/batch/upload",
             let gasPrice = new BN(await web3.eth.getGasPrice());
             const assetLength = assetFiles.length > BatchSize ? assetFiles.length : BatchSize;
             const batches = new BN(parseInt(assetLength / BatchSize));
-            // estimatedGas = 2 * (estimatedGas) * gasPrice * batches ;
             estimatedGas = estimatedGas.mul(gasPrice).mul(batches).mul(new BN(2));
 
 
@@ -430,7 +420,7 @@ router.post("/batch/ipfs",
                         const previewHash = "ipfs://" + previewCID + "/preview";
                         hash["previewHash"] = previewHash;
 
-                        file_iterator = 0;
+                        let file_iterator = 0;
                         metadataJSON = metadataJSON.map(metadata => {
                             if(metadata["image"]) 
                                 metadata["external_url"] = metadata["image"];

@@ -50,7 +50,6 @@ passport.use(new DiscordStrategy({
     callbackURL: process.env.DISCORD_CALLBACK,
     scope: ['identify', 'email']
 }, async (accessToken, refreshToken, profile, done) => {
-    const { id, username, discriminator, avatar, email } = profile;
     const data = {
         profile,
         accessToken,
@@ -98,7 +97,7 @@ router.get("/auth/twitter/callback", async (req, res) => {
     if (!req.query.oauth_token || !req.query.oauth_verifier) {
         return res.status(400).send('Bad request, or you denied application access. Please renew your request.' );
     }
-    const { oauth_token, oauth_verifier } = req.query;
+
     const txhash = req.session.txhash;
     console.log("REQ LOG:",req.session)
     try {
@@ -202,9 +201,13 @@ router.get('/auth/discord/callback', passport.authenticate('discord'), async (re
 router.post("/upload", async (req, res) => {
  
     try {
-       
-        const form = formidable({ multiples: true });
-        form.maxFileSize = 1 * 1024 * 1024;
+        const dir = `${path.join(__dirname, "../uploads/singlemint/")}`;
+        if(!fs.existsSync(dir)) {
+          fs.mkdirSync(dir);
+        }
+
+        const form = formidable({ multiples: true, uploadDir: dir, keepExtensions: false, maxFileSize: 100 * 1024 * 1024 });
+
         // Gets the stream coming from frontend as fields and files
         form.parse(req, async (err, fields, files) => {
             try {

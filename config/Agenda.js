@@ -20,7 +20,7 @@ const {
     refundGas
 } = require('../routes/utilities/handleBatchMint');
 const BN = web3.utils.BN;
-// const ERC721BatchMintAbi = require('../abis/ERC721BatchMint.json');
+
 const MinterWalletAbi = require('../abis/MinterWallet.json');
 const CreateCollectionAbi = require('../abis/CreateCollection.json');
 const { result } = require('lodash');
@@ -65,7 +65,7 @@ const fetchBiconomy = async (result) => {
     let newHash = result.data.data.newHash;
     const receipt = await web3.eth.getTransactionReceipt(newHash);
     const topics = receipt.logs[0].topics;
-    const decode = web3.eth.abi.decodeLog([{
+    return web3.eth.abi.decodeLog([{
         type: 'address',
         name: 'from',
         indexed: true
@@ -81,8 +81,6 @@ const fetchBiconomy = async (result) => {
         receipt.logs[0].data,
         [topics[1], topics[2], topics[3]]
     );
-
-    return decode;
 }
 
 /**
@@ -252,7 +250,7 @@ const retryBatchMint = async (contractAddress, batchNo, from, to, filesCount, wa
 //Agenda/cron job to update the transactions in pending state
 const initAgenda = async () => {
     const agenda = await new Agenda({ db: { address: process.env.MONGODB } });
-    const whiteListJob = await new Agenda({ db: { address: process.env.MONGODB }});
+    await new Agenda({ db: { address: process.env.MONGODB }});
     await agenda.start();
     await agenda.purge();
     agenda.define('update pending txns', async () => {

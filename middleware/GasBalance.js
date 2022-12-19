@@ -1,7 +1,7 @@
 const User = require("../models/user");
 const ObjectId = require('mongodb').ObjectId;
 const { web3 } = require('./../config/Biconomy');
-const { getGasTankBalance } = require('./../routes/utilities/gasTank');
+const { getGasTankBalance } = require('./../routes/utilities/GasTank');
 
 const checkGasBalance = async(req) => {
     const token = await req.headers["x-api-key"];
@@ -43,9 +43,8 @@ function objectIdWithTimestamp(timestamp) {
     var hexSeconds = Math.floor(timestamp/1000).toString(16);
 
     /* Create an ObjectId with that hex timestamp */
-    var constructedObjectId = ObjectId(hexSeconds + "0000000000000000");
+    return ObjectId(hexSeconds + "0000000000000000");
 
-    return constructedObjectId
 }
 
 module.exports = {

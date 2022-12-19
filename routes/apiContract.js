@@ -5,7 +5,7 @@ const RateLimit = require("../middleware/RateLimiter");
 const JWT = require('jsonwebtoken');
 
 const { web3, nftFactory } = require("./../config/Biconomy");
-const { calculateGasPrice, getGasTankBalance } = require('./utilities/gasTank');
+const { calculateGasPrice, getGasTankBalance } = require('./utilities/GasTank');
 const { checkGasBalance } = require('../middleware/GasBalance');
 
 
@@ -92,27 +92,23 @@ const collectionCreation = (redisClient) => {
                 return res.json({status: 400, message: "Details not found!"});
             }
 
-            const collection = user.customContracts.filter((item) => item.collectionAddress === contractAddress)[0];            
+            const collection = user.customContracts.filter((item) => item.collectionAddress === contractAddress)[0];
 
             let defaultSupply = 1;
             if(supply !== undefined) {
                 defaultSupply = supply;
-            }
+            }  
 
             const isAvailable = await checkGasBalance(req);
             if(!isAvailable) {
                 return res.status(400).json({message: "Insufficient gas tank balance to send transaction, please fill the gas tank!"});
             }
 
-            console.log('mint in progres....');
-            return res.status(200).send("done");
-
             const data = {
                 wallet: wallet,
                 tokenURI: tokenUri,
                 type: collection.nftType,
                 contractAddress: collection.collectionAddress,
-                supply: supply,
                 transactionHash: "0x",
                 status: "PENDING",
                 supply: defaultSupply,
@@ -128,12 +124,12 @@ const collectionCreation = (redisClient) => {
             if(collection.nftType === 'ERC721') {
                 erc721Factory.methods.mintUnderCollection(collection.collectionAddress, collection.contractId, to, tokenUri).send({from: process.env.MINTER})
                     .on("transactionHash", (hash) => handleTxHash(txId, hash))
-                    .on('receipt', (receipt) => handleSuccess(txId, receipt, collection.nftType))
+                    .on('receipt', (receipt) => handleSuccess(txId, receipt, collection.nftType, wallet))
                     .on('error', (err) => handleTxError(txId, err));
             } else if(collection.nftType === 'ERC1155') {
                 erc1155Factory.methods.mintUnderCollection(collection.collectionAddress, collection.contractId, to, tokenUri, supply).send({from: process.env.MINTER})
                     .on("transactionHash", (hash) => handleTxHash(txId, hash))
-                    .on("receipt", (receipt) => handleSuccess(txId, receipt, collection.nftType))
+                    .on("receipt", (receipt) => handleSuccess(txId, receipt, collection.nftType, wallet))
                     .on('error', (err) => handleTxError(txId, err));
             }
 
@@ -145,7 +141,7 @@ const collectionCreation = (redisClient) => {
         }
     });
 
-    router.post('/collection/mint', AuthCheck, JWTAuth, 
+    router.post('/collection/mint', AuthCheck, JWTAuth,
         (req, res, next) => RateLimit(redisClient, req, res, next),
         async(req, res) => {
         try {
@@ -161,11 +157,6 @@ const collectionCreation = (redisClient) => {
                 return res.json({status: 400, message: "Details not found!"});
             }
 
-            const gasTankBalance = await getGasTankBalance(wallet);
-            if(web3.utils.toBN(gasTankBalance).lte(web3.utils.toBN('0'))) {
-                return res.status(400).json({message: "Insufficient gas tank balance to send transaction, please fill the gas tank!"});
-            }
-
             const collection = user.customContracts.filter((item) => item.collectionAddress === contractAddress)[0];
 
             let defaultSupply = 1;
@@ -173,12 +164,16 @@ const collectionCreation = (redisClient) => {
                 defaultSupply = supply;
             }  
 
+            const isAvailable = await checkGasBalance(req);
+            if(!isAvailable) {
+                return res.status(400).json({message: "Insufficient gas tank balance to send transaction, please fill the gas tank!"});
+            }
+
             const data = {
                 wallet: wallet,
                 tokenURI: tokenUri,
                 type: collection.nftType,
                 contractAddress: collection.collectionAddress,
-                supply: supply,
                 transactionHash: "0x",
                 status: "PENDING",
                 supply: defaultSupply,
@@ -195,7 +190,7 @@ const collectionCreation = (redisClient) => {
                 response = await Promise.race([
                 erc721Factory.methods.mintUnderCollection(collection.collectionAddress, collection.contractId, to, tokenUri).send({from: process.env.MINTER})
                     .on("transactionHash", (hash) => handleTxHash(txId, hash))
-                    .on('receipt', (receipt) => handleSuccess(txId, receipt, collection.nftType))
+                    .on('receipt', (receipt) => handleSuccess(txId, receipt, collection.nftType, wallet))
                     .on('error', (err) => handleTxError(txId, err)),
 
                     new Promise((res, rej) =>
@@ -209,7 +204,7 @@ const collectionCreation = (redisClient) => {
                 response = await Promise.race([
                 erc1155Factory.methods.mintUnderCollection(collection.collectionAddress, collection.contractId, to, tokenUri, supply).send({from: process.env.MINTER})
                     .on("transactionHash", (hash) => handleTxHash(txId, hash))
-                    .on("receipt", (receipt) => handleSuccess(txId, receipt, collection.nftType))
+                    .on("receipt", (receipt) => handleSuccess(txId, receipt, collection.nftType, wallet))
                     .on('error', (err) => handleTxError(txId, err)),
                     
                     new Promise((res, rej) =>  setTimeout(
@@ -241,7 +236,7 @@ const collectionCreation = (redisClient) => {
                 if(user.customContracts) {
                     return res.status(200).json({status: true, message: "Collections found", data: user.customContracts, isToken: user.refreshToken ? true: false});
                 } else {
-                    return res.status(200).json({status: false, message: "No collections created!"})
+                    return res.status(200).json({status: false, message: "No collections created!", isToken: user.refreshToken ? true : false})
                 }
             } else {
                 return res.status(400).json({status: false, message: "User not found"})
@@ -325,7 +320,6 @@ const collectionCreation = (redisClient) => {
     return router;
 }
 
-
 async function handleTxHash(txId, hash) {
     try {
         console.log('Tx hash...', hash)
@@ -335,7 +329,7 @@ async function handleTxHash(txId, hash) {
     }
 }
 
-async function handleSuccess(txId, receipt, type) {
+async function handleSuccess(txId, receipt, type, wallet) {
     try {
         console.log('Tx success...', receipt.transactionHash);
         const returnValues = await decodeEventLog(receipt.events['0'].raw, type);
@@ -345,16 +339,16 @@ async function handleSuccess(txId, receipt, type) {
         } else {
             id = returnValues.id;
         }
-
         const feeBurnt = await calculateGasPrice(receipt);
-        
 
-        const data = await Collection.findOneAndUpdate({_id: txId}, {
+        await Collection.findOneAndUpdate({_id: txId}, {
             status: "CONFIRMED",
             tokenId: id
         });
 
-        const userData = await User.findOne({wallet: data.wallet});
+        const userData = await User.findOne({wallet: wallet});
+        console.log(userData);
+        console.log(wallet);
         let gasFeeUtilized;
         if(userData.gasFeeUtilized) {
             gasFeeUtilized = web3.utils.toBN(userData.gasFeeUtilized).add(web3.utils.toBN(feeBurnt));
@@ -362,8 +356,7 @@ async function handleSuccess(txId, receipt, type) {
             gasFeeUtilized = web3.utils.toBN(feeBurnt)
         }
 
-        await User.findOneAndUpdate({wallet: data.wallet}, {gasFeeUtilized});
-        
+        await User.findOneAndUpdate({wallet: wallet}, {gasFeeUtilized});
     } catch(e) {
         console.log(e);
     }
@@ -408,7 +401,7 @@ async function decodeEventLog(raw, type) {
     const data = raw.data;
     if(type === 'ERC721') {
         console.log(topics);
-        const decode = web3.eth.abi.decodeLog([{
+        return web3.eth.abi.decodeLog([{
             type: 'address',
             name: 'from',
             indexed: true
@@ -425,9 +418,8 @@ async function decodeEventLog(raw, type) {
             data,
             [topics[1], topics[2], topics[3]]
         );
-        return decode;
     } else if(type === 'ERC1155') {
-        const decode = web3.eth.abi.decodeParameters([
+        return web3.eth.abi.decodeParameters([
             {
                 type: 'uint256',
                 name: 'id',
@@ -436,7 +428,6 @@ async function decodeEventLog(raw, type) {
                 type: 'uint256',
                 name: 'value',
             }], raw.data)
-        return decode;
     }
 }
 
