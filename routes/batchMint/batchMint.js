@@ -306,7 +306,11 @@ router.get('/batch/collection/:wallet',JWTAuth, AuthCheck, (req, res, next) => R
         const errors = validationResult(req);
         if (!errors.isEmpty()) {
             return res.status(422).json({ errors: errors.array() });
+<<<<<<< HEAD
         }
+=======
+        };
+>>>>>>> 32fdbeb5e7b0ae54db5c22a2a52562bffcaa71e6
     
         const { wallet } = req.params;
     
