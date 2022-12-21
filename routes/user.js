@@ -138,7 +138,6 @@ const user = (redisClient) => {
 			res.status(400).send('Bad request, or you denied application access. Please renew your request.' );
 			return;
 		}
-
 		const wallet = req.session.wallet;
 
 		try {

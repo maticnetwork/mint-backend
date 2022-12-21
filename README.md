@@ -64,4 +64,8 @@ TWITTER_CALLBACK =
 
 **Claim page:**
 Proxy -> https://polygonscan.com/address/0x431d93aA78c771FD65998478D457C0daF6bAF75b#code
+<<<<<<< HEAD
 Implementation -> https://polygonscan.com/address/0x17cc193b77491e5439a5a4eb97799bfb327279b9#code
+=======
+Implementation -> https://polygonscan.com/address/0x17cc193b77491e5439a5a4eb97799bfb327279b9#code
+>>>>>>> a00b90a6ecd38bfa693ff11f6b9ccec4fe967911

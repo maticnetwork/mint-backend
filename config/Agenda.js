@@ -20,7 +20,6 @@ const {
     refundGas
 } = require('../routes/utilities/handleBatchMint');
 const BN = web3.utils.BN;
-
 const MinterWalletAbi = require('../abis/MinterWallet.json');
 const CreateCollectionAbi = require('../abis/CreateCollection.json');
 const { result } = require('lodash');

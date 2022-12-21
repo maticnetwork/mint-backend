@@ -97,7 +97,6 @@ router.get("/auth/twitter/callback", async (req, res) => {
     if (!req.query.oauth_token || !req.query.oauth_verifier) {
         return res.status(400).send('Bad request, or you denied application access. Please renew your request.' );
     }
-
     const txhash = req.session.txhash;
     console.log("REQ LOG:",req.session)
     try {
