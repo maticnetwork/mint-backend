@@ -16,7 +16,7 @@ const RateLimit = async(redisClientPromise, req, res, next) => {
         "https://staging.0xmint.io",
         "https://app.0xmint.io",
         "https://app-staging.0xmint.io",
-        "https://mint.dehidden.com/"
+        "https://mint.dehidden.com"
       ];
 
     if ((allowedOrigin.indexOf(req.get("origin")) > -1)) {

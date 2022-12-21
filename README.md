@@ -1,12 +1,6 @@
 # NFT Minter Backend
-0xmint.io is a platform to make the minting experience easier & smoother for both users & developers. The aim is for anyone to come on the platform and have a smooth minting experience that suits their needs.
-
-- For users who’re just venturing into web3, Quick Mint is the best way to onboard them. It allows them to mint their single NFTs in just 3 clicks - and for free! It supports all major file types under 100MB.
-- For NFT artists and creators who mint their art very often, Batch Mint is the feature for them. Batch Mint enables the minting of thousands of NFTs at once - with a single click and minimal gas fee!
-- “I’ve minted my NFT. Now what?” Well, now you can add utilities to your NFTs. Add an autograph, send it as a gift, order a phygital version or add unlockable content. Make your NFT truly your own.
-- Mint NFTs and create your own customized claim page. By creating a claim page, you have control over which wallets can claim your NFT, assign a date range, and even limit the number of NFTs that can be claimed.
-- Integrating Mint NFT into your dApps is completely free. We provide an open API for Single Minting and Batch Minting. Developers and people leading NFT projects can easily plug the API into their projects and create seamless minting experiences.
-
+0xmint.io is a tool that makes the integration of minting solutions to DApps butter smooth for developers. The goal is to remove the friction, of the need to create custom contracts to start minting your first NFT or add minting functionality to your DApps.
+Follow the below mentioned steps to setup the project and start working on your own implementation
 
 # Installation
 
@@ -70,4 +64,8 @@ TWITTER_CALLBACK =
 
 **Claim page:**
 Proxy -> https://polygonscan.com/address/0x431d93aA78c771FD65998478D457C0daF6bAF75b#code
+<<<<<<< HEAD
 Implementation -> https://polygonscan.com/address/0x17cc193b77491e5439a5a4eb97799bfb327279b9#code
+=======
+Implementation -> https://polygonscan.com/address/0x17cc193b77491e5439a5a4eb97799bfb327279b9#code
+>>>>>>> a00b90a6ecd38bfa693ff11f6b9ccec4fe967911
