@@ -20,6 +20,7 @@ const {
     refundGas
 } = require('../routes/utilities/handleBatchMint');
 const BN = web3.utils.BN;
+
 const MinterWalletAbi = require('../abis/MinterWallet.json');
 const CreateCollectionAbi = require('../abis/CreateCollection.json');
 const { result } = require('lodash');
@@ -27,7 +28,8 @@ const Collection = require('../models/collection');
 const createCollection = new web3.eth.Contract(CreateCollectionAbi, CreateCollectionContractAddress);
 const minterWallet = new web3.eth.Contract(MinterWalletAbi, MinterWalletContractAddress);
 
-const sleep = (ms) => new Promise((resolve) => { setTimeout(resolve, ms) })
+const sleep = (ms) => new Promise((resolve) => { setTimeout(resolve, ms) });
+const MaticTransferTopic = "0xe6497e3ee548a3372136af2fcb0696db31fc6cf20260707645068bd3fe97f3c4";
 
 /**
  * @param {object=} dbResult - Result Object from MongoDB
@@ -96,6 +98,17 @@ const pollBiconomyAndUpdateSingleMint = async (hash) => {
                 await Mint.findOneAndUpdate({ transactionHash: hash }, { transactionHash: result.data.data.newHash, status: 'CONFIRMED', tokenId: decode.value });
             } else if (result.data.data.newStatus === 'FAILED') {
                 await Mint.findOneAndUpdate({ transactionHash: hash }, { transactionHash: result.data.data.newHash, status: 'FAILED' });
+            } else if (result.data.data.newStatus === 'DROPPED') {
+                const oldReceipt = await web3.eth.getTransactionReceipt(hash);
+                const newReceipt = await web3.eth.getTransactionReceipt(result.data.data.newHash);
+
+                if(oldReceipt.result === null && newReceipt.result === null) {
+                    await Mint.findOneAndUpdate({ transactionHash: hash }, { transactionHash: hash, status: 'DROPPED' });
+                } else if(oldReceipt.result !== null) {
+                    await Mint.findOneAndUpdate({ transactionHash: hash }, { transactionHash: hash, status: 'CONFIRMED' });
+                } else if(newReceipt.result !== null) {
+                    await Mint.findOneAndUpdate({ transactionHash: hash }, { transactionHash: result.data.data.newHash, status: 'CONFIRMED' });
+                }
             }
         }).catch((e) => console.log(e));
 
@@ -112,22 +125,39 @@ const pollBiconomyAndUpdateRefundStatus = async (hash) => {
         console.log('Refund Hash in polling.....', hash);
         biconomyTxCheck(hash)
         .then(async (result) => {
-            if (result?.data?.data?.newStatus === 'CONFIRMED') {
-                console.log(`CONFIRMED - ${hash}`)
-                await BatchMintUpload.findOneAndUpdate(
-                    { refundHash: hash }, 
-                    { 
-                        refundHash: result.data.data.newHash, 
-                        "status.refund": 'CONFIRMED'
-                    });
-            } else if (result.data.data.newStatus === 'FAILED') {
-                console.log(`FAILED - ${hash}`)
-                await BatchMintUpload.findOneAndUpdate(
-                    { refundHash: hash }, 
-                    { 
-                        refundHash: result.data.data.newHash,
-                        "status.refund": 'FAILED'
-                    });
+            if(result.data !== '') {
+                if (result?.data?.data?.newStatus === 'CONFIRMED') {
+                    console.log(`CONFIRMED - ${hash}`)
+                    await BatchMintUpload.findOneAndUpdate(
+                        { refundHash: hash }, 
+                        { 
+                            refundHash: result.data.data.newHash, 
+                            "status.refund": 'CONFIRMED'
+                        });
+                } else if (result.data.data.newStatus === 'FAILED') {
+                    console.log(`FAILED - ${hash}`)
+                    await BatchMintUpload.findOneAndUpdate(
+                        { refundHash: hash }, 
+                        { 
+                            refundHash: result.data.data.newHash,
+                            "status.refund": 'FAILED'
+                        });
+                }
+            } else {
+                const receipt = await web3.eth.getTransactionReceipt(hash);
+                const logs = receipt.logs;
+                for(let i = 0; i < logs.length; i++) {
+                    if(logs[i].topics[0] === MaticTransferTopic) {
+                        console.log(`CONFIRMED - ${hash}`);
+                        await BatchMintUpload.findOneAndUpdate(
+                            { refundHash: hash }, 
+                            { 
+                                refundHash: hash,
+                                "status.refund": 'CONFIRMED'
+                            }); 
+                        break;
+                    }
+                }
             }
         }).catch((e) => console.log(e));
     } catch (e) {
@@ -203,6 +233,7 @@ const pollBiconomyAndUpdateWhitelist = async(hash) => {
 }
 
 const pollBiconomyAndUpdateCollectionMint = async(hash) => {
+    console.log(`Polling collection tx status...${hash}`)
     biconomyTxCheck(hash).then(async(result) => {
         if(result.data.data.newStatus === 'CONFIRMED') {
             console.log(`Tx confirmed - ${hash}`);

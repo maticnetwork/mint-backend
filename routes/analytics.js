@@ -5,6 +5,7 @@ const RateLimit = require('../middleware/RateLimiter');
 const User = require("../models/user");
 const BatchMintUpload = require("../models/batchMint");
 const Phygital = require("../models/utilities/phygital");
+const CustomCollection = require('../models/collection');
 
 const analytics = (redis) => {
 
@@ -25,7 +26,6 @@ const analytics = (redis) => {
                 toDate = new Date(parseInt(to) * 1000);
             }
 
-            console.log(fromDate, toDate);
             
             if(!pass) {
                 return res.status(400).json({status: false, message: "Unauthorized!"})
@@ -177,6 +177,8 @@ const analytics = (redis) => {
                     } 
                 }
             ]);
+
+
             
             const batchMintData = await getBatchMintData(fromDate, toDate);
             const dehiddenData = await getDehiddenData(fromDate, toDate);
@@ -199,6 +201,180 @@ const analytics = (redis) => {
             console.log(e);
             res.status(500).json({status: false, message:e})
         }
+    });
+
+
+    router.get('/custom-data', async(req, res) => {
+        try {
+            console.log('in custom data');
+            const userWithApi = await User.find({$or : [{twitter: { $ne: null}},  {discord: {$ne: null}}]}, {wallet:1, twitter: 1, discord: 1,_id:0}).lean();
+
+            // let userArray = [];
+            // for(let i = 0; i < userWithApi.length; i++) {
+            //     userArray.push(userWithApi[i].wallet);
+            // }
+
+            // // const addressesTxns = await Mint.find({wallet: {$in: userArray}});
+            
+
+            // let addressesTxns = await Mint.aggregate([
+            //     {
+            //         $match: {
+            //             wallet: { $in: userArray}
+            //         }
+            //     }, {
+            //         $group: {
+            //             _id: { address: "$wallet"},
+            //             count: { $sum: 1 }
+            //         }
+            //     }, {
+            //         $sort: { count: - 1}
+            //     }, {
+            //         $project: {
+            //             _id: 0,
+            //             count: 1,
+            //             address: "$_id.address"
+            //         }
+            //     }
+            // ]);
+
+            // let resultData = [];
+            // for(let i = 0; i < addressesTxns.length; i++) {
+            //     let data = userWithApi.find((data) => data.wallet ===  addressesTxns[i].address);
+            //     data['count'] = addressesTxns[i].count;
+            //     resultData.push(data);
+            // }
+
+            // console.log(resultData);
+
+
+
+            return res.status(200).json({data: userWithApi});
+
+        } catch(e) {
+            console.log(e);
+            return res.status(500).json({error: e});
+        }
+    });
+
+
+    router.get('/api-analytics', 
+        // (req, res, next) => RateLimit(redis, req, res, next),
+        async(req, res) => {
+            try {
+                const pass = req.headers["x-pass"];
+                const { from, to } = req.query;
+                let fromDate;
+                let toDate;
+                if(parseInt(from) === 0 || parseInt(to) === 0) {
+                    fromDate = new Date("2022-04-01");
+                    toDate = new Date(Date.now());
+                } else {
+                    fromDate = new Date(parseInt(from) * 1000);
+                    toDate = new Date(parseInt(to) * 1000);
+                }
+
+                if(!pass) {
+                    return res.status(400).json({status: false, message: "Unauthorized!"})
+                }
+    
+                if(pass !== process.env.DASHBOARD_PASSWORD) {
+                    return res.status(400).json({status: false, message: "Unauthorized!"})
+                }
+
+                const topAddressWithV2Mints721 = await CustomCollection.aggregate([
+                    {
+                        $match: {type: 'ERC721', createdAt: { $gte: fromDate, $lt: toDate }}
+                    },
+                    {
+                        $lookup: {
+                            from: 'users',
+                            localField: 'wallet',
+                            foreignField: 'wallet',
+                            as: 'users'
+                        }
+                    },
+                    {
+                        $group: {
+                            _id: { type: "$type", address: "$wallet" },
+                            contractAddress: { $addToSet: "$contractAddress" },
+                            twitter: { $first: "$users.twitter"},
+                            discord: { $first: "$users.discord"},
+                            discordUnique: { $first: "$users.discordUnique"},
+                            count: { $sum: 1}
+                        },
+                    },
+                    {
+                        $sort: {count : -1 } 
+                    },
+                    {
+                        $limit: 3
+                    },
+                    {
+                        $project: { 
+                            _id: 0, 
+                            count: 1,
+                            type: "$_id.type",
+                            address: "$_id.address",
+                            contractAddress: 1,
+                            twitter: 1,
+                            discord: 1,
+                            discordUnique: 1
+                        } 
+                    }
+    
+                ]);
+
+                const topAddressWithV2Mints1155 = await CustomCollection.aggregate([
+                    {
+                        $match: {type: 'ERC1155', createdAt: { $gte: fromDate, $lt: toDate }}
+                    },
+                    {
+                        $lookup: {
+                            from: 'users',
+                            localField: 'wallet',
+                            foreignField: 'wallet',
+                            as: 'users'
+                        }
+                    },
+                    {
+                        $group: {
+                            _id: { type: "$type", address: "$wallet" },
+                            contractAddress: { $addToSet: "$contractAddress" },
+                            twitter: { $first: "$users.twitter"},
+                            discord: { $first: "$users.discord"},
+                            discordUnique: { $first: "$users.discordUnique"},
+                            count: { $sum: 1}
+                        },
+                    },
+                    {
+                        $sort: {count : -1 } 
+                    },
+                    {
+                        $limit: 3
+                    },
+                    {
+                        $project: { 
+                            _id: 0, 
+                            count: 1,
+                            type: "$_id.type",
+                            address: "$_id.address",
+                            contractAddress: 1,
+                            twitter: 1,
+                            discord: 1,
+                            discordUnique: 1
+                            
+                        }
+                    }
+    
+                ]);
+
+
+                return res.status(200).json({data: {ERC721: topAddressWithV2Mints721, ERC1155: topAddressWithV2Mints1155}})
+            } catch(e) {
+                console.log(e);
+                return res.status(500).json({error: e});
+            }
     });
 
     return router;

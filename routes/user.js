@@ -138,6 +138,7 @@ const user = (redisClient) => {
 			res.status(400).send('Bad request, or you denied application access. Please renew your request.' );
 			return;
 		}
+
 		const wallet = req.session.wallet;
 
 		try {
@@ -149,7 +150,7 @@ const user = (redisClient) => {
 				});
 			}
 
-			if(DB.discord) {
+			if(DB.discord || DB.discordUnique) {
 				return res.status(400).send('The wallet is authenticated with different account!');
 			}
 
@@ -247,25 +248,39 @@ const user = (redisClient) => {
 				return res.status(400).send('The wallet is authenticated with different account!');
 			}
 
-			console.log(`Discord UserName - `, req.user.profile.username);
 			const discordUser = await User.findOne({ discord: req.user.profile.username });
+			const uniqueUser = await User.findOne({ "discordUnique.id": req.user.profile.id});
 
-			if(discordUser) {
+
+			if(uniqueUser) {
+				if(uniqueUser.wallet !== wallet) {
+					return res.status(400).send('The account is already authenticated with other wallet address!');
+				}
+			} else if(discordUser) {
 				if(discordUser.wallet !== wallet) {
 					return res.status(400).send('The account is already authenticated with other wallet address!');
 				}
+
+				await User.findOneAndUpdate({ wallet: wallet }, { $set: {
+					discordUnique:{
+						name: `${req.user.profile.username}#${req.user.profile.discriminator}`,
+						id: req.user.profile.id
+					},
+					discord: ""
+				}});
 			} else {
-				if(!user.discord) {
+				if(!user.discord && !user.discordUnique) {
 					await User.findOneAndUpdate({ wallet: wallet }, { $set: {
-						discord: req.user.profile.username
+						discordUnique:{
+							name: `${req.user.profile.username}#${req.user.profile.discriminator}`,
+							id: req.user.profile.id
+						}
 					}});
 				} else {
 					return res.status(400).send('The wallet is authenticated with another discord account! Please sign in using the right account!'); 
 				}
-				
 			}
-
-			return res.redirect(redirect_uri + "?username=" + req.user.profile.username);
+			return res.redirect(redirect_uri + "?username=" + req.user.profile.username + "#" + req.user.profile.discriminator);
 		} catch (err) {
 			console.error(err.message);
 			return res.status(500).send("Server Error");
@@ -280,7 +295,7 @@ const user = (redisClient) => {
 			const { wallet } = req.params;
 			const user = await User.findOne({wallet});
 
-			if(!user.twitter && !user.discord) 
+			if(!user.twitter && !user.discord && !user.discordUnique) 
 				return res.status(400).send("Bad Request")
 
 			const apis = await FetchSocialUserApi(wallet);
@@ -304,7 +319,7 @@ const user = (redisClient) => {
 			const WINDOW = 24 * 60 * 60 * 1000; // 1 day in ms
 			const ALLOWED_REQUESTS = 10000; // 10,000 requests per API token
 			const user = await User.findOne({ wallet: wallet});
-			if(!user.twitter && !user.discord) 
+			if(!user.twitter && !user.discord && !user.discordUnique)
 				return res.status(400).send("Bad Request")
 
 			const apis = await FetchSocialUserApi(wallet);
@@ -403,7 +418,7 @@ const user = (redisClient) => {
 			const { name, wallet } = req.body;
 
 			const user = await User.findOne({ wallet: wallet});
-			if(!user?.twitter?.id && !user.discord)
+			if(!user?.twitter?.id && !user.discord && !user.discordUnique)
 				return res.status(400).json({message: "Bad Request! User not authorized"})
 
 			if(!name || !wallet) {

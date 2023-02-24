@@ -43,6 +43,14 @@ const SingleMint = (redisClient) => {
     (req, res, next) => RateLimit(redisClient, req, res, next),
     async (req, res) => {
       try {
+
+        const allowedOrigin = [
+          "https://mint.dehidden.com",
+        ];
+        const token = req.headers['x-api-key'];
+        if(!(allowedOrigin.indexOf(req.get('origin')) > -1) && token !== process.env.FRONTEND_API) {
+          return res.status(400).json({message: "V1 Apis are deprecated, please use V2 APIs. Check https://docs.0xmint.io/ for more info"});
+        }
        
         const dir = `${path.join(__dirname, "../uploads/singlemint/")}`;
         if(!fs.existsSync(dir)) {
@@ -215,6 +223,13 @@ const SingleMint = (redisClient) => {
     (req, res, next) => RateLimit(redisClient, req, res, next),
     catchAsync(async (req, res) => {
       try {
+        const allowedOrigin = [
+          "https://mint.dehidden.com",
+        ];
+        const token = req.headers['x-api-key'];
+        if(!(allowedOrigin.indexOf(req.get('origin')) > -1) && token !== process.env.FRONTEND_API) {
+          return res.status(400).json({message: "V1 Apis are deprecated, please use V2 APIs. Check https://docs.0xmint.io/ for more info"});
+        }
         req.setTimeout(0);
         let defaultAmount = 1;
         let category = null;
@@ -537,7 +552,6 @@ const SingleMint = (redisClient) => {
     const { contractAddress, tokenId } = req.params;
 
     try {
-      console.log(ALCHEMY_URL);
       const web3 = createAlchemyWeb3(ALCHEMY_URL);
 
       let response = await web3.alchemy.getNftMetadata({
