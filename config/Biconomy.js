@@ -32,7 +32,7 @@ if(process.env.TEST === 'true') {
     ALCHEMY_URL = "https" + process.env.PROVIDER_URL.substring(3, process.env.PROVIDER_URL.length);
 } else {
     console.log('in mainnet')
-    providerUrl =  PROVIDER_URL_MAINNET;
+    providerUrl =  process.env.PROVIDER_URL_MAINNET;
     biconomyApi =  BICONOMY_MAINNET;
     globalNFT = require('../nftGlobalMainnet.json');
     globalClaim = require('../claimGlobalMainnet.json');
@@ -51,7 +51,7 @@ const provider = new HDWalletProvider({
 	providerOrUrl: providerUrl,
 	// chainId: "any"
 });
-const biconomy = new Biconomy(new Web3.providers.WebsocketProvider(providerUrl), 
+const biconomy = new Biconomy(new Web3.providers.HttpProvider(providerUrl), 
     {apiKey: biconomyApi, strictMode: true, walletProvider: provider});
 const web3 = new Web3(biconomy);
 const web3N = new Web3(provider);

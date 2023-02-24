@@ -295,6 +295,29 @@ const collectionCreation = (redisClient) => {
         }
 
     });
+    
+    router.get('/collection/all/:wallet',AuthCheck,async(req, res) => {
+        try {
+            const { wallet } = req.params;
+            let { page } = req.query;
+            if(!page) {
+                page = 1;
+            }
+            const limit = 5;
+            const skipCount = (parseInt(page) - 1) * limit;
+            const totalPages = await Collection.countDocuments({wallet:wallet,to:wallet}) / limit;
+            const collections = await Collection.find({wallet:wallet,to:wallet})?.sort({_id: -1})?.skip(skipCount)?.limit(limit).lean();
+            if(collections.length > 0) {
+                return res.status(200).json({status: true, message: "Collection NFTs found", data: collections, totalPages: Math.ceil(totalPages)});
+            }  else {
+                return res.status(400).json({status: false, message: "No NFTs found"});
+            }
+        } catch(e) {
+            console.log(e);
+            return res.status(500).json({status: false, message: "Internal server error!"});
+        }
+
+    });
 
     router.post('/refreshJWT', AuthCheck, async(req, res) => {
 		try {	
@@ -319,6 +342,8 @@ const collectionCreation = (redisClient) => {
 
     return router;
 }
+
+
 
 async function handleTxHash(txId, hash) {
     try {

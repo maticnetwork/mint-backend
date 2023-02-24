@@ -50,6 +50,12 @@ var UserSchema = new Schema({
     discord: {
         type: String
     },
+    discordUnique: {
+        type: {
+            name: String,
+            id: String,
+        }
+    },
     secretKeyHash: {
         type: String
     },
